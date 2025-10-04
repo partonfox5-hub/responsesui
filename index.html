@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OpenAI Responses UI</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f5f5f7;
+      --fg: #1f1f23;
+      --accent: #5a67d8;
+      --accent-dark: #434190;
+      --border: rgba(0, 0, 0, 0.12);
+      --muted: rgba(0, 0, 0, 0.6);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #16161a;
+        --fg: #f8f8f2;
+        --border: rgba(255, 255, 255, 0.12);
+        --muted: rgba(255, 255, 255, 0.7);
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: "Inter", "Segoe UI", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      gap: 16px;
+    }
+
+    header {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.6);
+      backdrop-filter: blur(12px);
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.5rem;
+    }
+
+    header p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 12px;
+    }
+
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    input[type="text"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.8);
+      color: inherit;
+      resize: vertical;
+      min-height: 42px;
+    }
+
+    textarea {
+      min-height: 96px;
+    }
+
+    main {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    #chatLog {
+      flex: 1;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.7);
+      padding: 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .message {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.8);
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+
+    .message.user {
+      background: rgba(90, 103, 216, 0.12);
+      border-color: rgba(90, 103, 216, 0.3);
+      align-self: flex-end;
+    }
+
+    .message.assistant {
+      align-self: flex-start;
+    }
+
+    .message .meta {
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    form {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+
+    form textarea {
+      flex: 1 1 320px;
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 180px;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 16px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      background: var(--accent);
+      color: white;
+      transition: background 0.2s ease, transform 0.2s ease;
+    }
+
+    button.secondary {
+      background: rgba(90, 103, 216, 0.16);
+      color: var(--accent-dark);
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    button:not(:disabled):hover {
+      background: var(--accent-dark);
+    }
+
+    button:not(:disabled):active {
+      transform: translateY(1px);
+    }
+
+    ul.file-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 0.85rem;
+    }
+
+    ul.file-list li {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px dashed var(--border);
+      align-items: center;
+      background: rgba(90, 103, 216, 0.08);
+    }
+
+    ul.file-list li span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .file-status {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .status-bar {
+      font-size: 0.85rem;
+      color: var(--muted);
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .status-bar span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      background: rgba(255, 255, 255, 0.6);
+      font-size: 0.75rem;
+    }
+
+    .attachments-row {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>OpenAI Responses Playground</h1>
+    <p>A lightweight local interface for experimenting with the OpenAI Responses API, including GPT-5 Codex (400k context). Your API key never leaves this page and is stored only in memory.</p>
+    <div class="grid">
+      <label>
+        OpenAI API Key
+        <input id="apiKey" type="text" placeholder="sk-..." autocomplete="off" />
+      </label>
+      <label>
+        Model
+        <select id="model">
+          <option value="gpt-5">gpt-5</option>
+          <option value="gpt-5-codex">gpt-5-codex</option>
+          <option value="gpt-4.1-mini">gpt-4.1-mini</option>
+          <option value="gpt-4o-mini">gpt-4o-mini</option>
+        </select>
+      </label>
+      <label>
+        System Prompt (optional)
+        <textarea id="systemPrompt" placeholder="You are a helpful assistant."></textarea>
+      </label>
+    </div>
+    <div class="status-bar">
+      <span class="pill" id="tokenCount">Tokens: 0</span>
+      <span class="pill" id="fileCount">Files: 0</span>
+      <span id="statusMessage">Ready.</span>
+    </div>
+  </header>
+  <main>
+    <section id="chatLog" aria-live="polite"></section>
+    <form id="chatForm">
+      <textarea id="userInput" placeholder="Type your message..." required></textarea>
+      <div class="controls">
+        <div class="attachments-row">
+          <input type="file" id="fileInput" multiple class="hidden" />
+          <button type="button" id="attachButton" class="secondary">Attach files</button>
+          <ul class="file-list" id="fileList"></ul>
+        </div>
+        <button type="submit" id="sendButton">Send</button>
+      </div>
+    </form>
+  </main>
+  <script>
+    const chatLog = document.getElementById('chatLog');
+    const chatForm = document.getElementById('chatForm');
+    const userInput = document.getElementById('userInput');
+    const sendButton = document.getElementById('sendButton');
+    const apiKeyInput = document.getElementById('apiKey');
+    const modelSelect = document.getElementById('model');
+    const systemPromptInput = document.getElementById('systemPrompt');
+    const statusMessage = document.getElementById('statusMessage');
+    const tokenCount = document.getElementById('tokenCount');
+    const fileCount = document.getElementById('fileCount');
+    const fileInput = document.getElementById('fileInput');
+    const attachButton = document.getElementById('attachButton');
+    const fileList = document.getElementById('fileList');
+
+    const conversation = [];
+    const pendingFiles = new Map();
+    const uploadedFiles = new Map();
+
+    function updateTokenEstimate() {
+      const text = conversation
+        .map((entry) => entry.content
+          .filter((part) => part.type === 'input_text' || part.type === 'output_text')
+          .map((part) => part.text)
+          .join(' '))
+        .join(' ');
+      const estimate = Math.ceil(text.split(/\s+/).filter(Boolean).length * 1.33);
+      tokenCount.textContent = `Tokens (rough): ${estimate}`;
+    }
+
+    function updateFileList() {
+      fileList.innerHTML = '';
+      const allFiles = [...pendingFiles.values(), ...uploadedFiles.values()];
+      allFiles.forEach((fileInfo) => {
+        const li = document.createElement('li');
+        const name = document.createElement('span');
+        name.textContent = fileInfo.name;
+        const status = document.createElement('span');
+        status.className = 'file-status';
+        status.textContent = fileInfo.status;
+        li.appendChild(name);
+        li.appendChild(status);
+        fileList.appendChild(li);
+      });
+      fileCount.textContent = `Files: ${allFiles.length}`;
+    }
+
+    function appendMessage(role, text, attachments = []) {
+      const wrapper = document.createElement('article');
+      wrapper.className = `message ${role}`;
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.textContent = role;
+      const body = document.createElement('div');
+      body.innerText = text;
+      wrapper.appendChild(meta);
+      wrapper.appendChild(body);
+
+      if (attachments.length) {
+        const list = document.createElement('ul');
+        list.className = 'file-list';
+        attachments.forEach((attachment) => {
+          const item = document.createElement('li');
+          const name = document.createElement('span');
+          name.textContent = attachment.name;
+          const status = document.createElement('span');
+          status.className = 'file-status';
+          status.textContent = attachment.status || 'attached';
+          item.appendChild(name);
+          item.appendChild(status);
+          list.appendChild(item);
+        });
+        wrapper.appendChild(list);
+      }
+
+      chatLog.appendChild(wrapper);
+      chatLog.scrollTop = chatLog.scrollHeight;
+    }
+
+    async function uploadFile(file) {
+      const apiKey = apiKeyInput.value.trim();
+      if (!apiKey) {
+        throw new Error('Provide your API key before uploading files.');
+      }
+      const formData = new FormData();
+      formData.append('purpose', 'assistants');
+      formData.append('file', file, file.name);
+
+      const response = await fetch('https://api.openai.com/v1/files', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`
+        },
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`File upload failed: ${errorText}`);
+      }
+
+      return response.json();
+    }
+
+    attachButton.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', () => {
+      Array.from(fileInput.files).forEach((file) => {
+        pendingFiles.set(file.name, {
+          file,
+          name: file.name,
+          status: 'pending upload'
+        });
+      });
+      updateFileList();
+      fileInput.value = '';
+    });
+
+    async function ensureFilesUploaded() {
+      for (const [name, info] of pendingFiles) {
+        try {
+          statusMessage.textContent = `Uploading ${name}...`;
+          info.status = 'uploading';
+          updateFileList();
+          const uploaded = await uploadFile(info.file);
+          uploadedFiles.set(name, {
+            ...info,
+            status: 'uploaded',
+            id: uploaded.id
+          });
+          pendingFiles.delete(name);
+        } catch (err) {
+          info.status = 'error';
+          statusMessage.textContent = err.message;
+          updateFileList();
+          throw err;
+        }
+      }
+      updateFileList();
+      statusMessage.textContent = 'Files ready.';
+    }
+
+    function buildConversationPayload(userText, attachments) {
+      const payload = [];
+      const systemPrompt = systemPromptInput.value.trim();
+      if (systemPrompt && conversation.length === 0) {
+        payload.push({
+          role: 'system',
+          content: [{ type: 'input_text', text: systemPrompt }]
+        });
+      }
+
+      conversation.forEach((entry) => {
+        payload.push(entry);
+      });
+
+      const userContent = [{ type: 'input_text', text: userText }];
+      attachments.forEach((attachment) => {
+        userContent.push({
+          type: 'input_file',
+          file_id: attachment.id,
+          tools: ['gpt-file-search']
+        });
+      });
+
+      payload.push({
+        role: 'user',
+        content: userContent
+      });
+
+      return payload;
+    }
+
+    async function sendMessage(userText) {
+      const apiKey = apiKeyInput.value.trim();
+      const model = modelSelect.value;
+
+      if (!apiKey) {
+        alert('Please provide your OpenAI API key first.');
+        return;
+      }
+
+      const attachments = [...uploadedFiles.values()];
+      const payload = buildConversationPayload(userText, attachments);
+
+      appendMessage('user', userText, attachments);
+      conversation.push(payload[payload.length - 1]);
+      updateTokenEstimate();
+
+      statusMessage.textContent = 'Calling OpenAI...';
+      sendButton.disabled = true;
+
+      try {
+        const response = await fetch('https://api.openai.com/v1/responses', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model,
+            input: payload
+          })
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText || 'Unknown error');
+        }
+
+        const data = await response.json();
+        const outputText = data.output_text || data.output?.map((entry) => entry.content?.map((part) => part.text || '').join('\n')).join('\n') || 'No response content received.';
+        appendMessage('assistant', outputText);
+        conversation.push({
+          role: 'assistant',
+          content: [{ type: 'output_text', text: outputText }]
+        });
+        statusMessage.textContent = 'Response received.';
+        updateTokenEstimate();
+      } catch (error) {
+        console.error(error);
+        statusMessage.textContent = `Error: ${error.message}`;
+        appendMessage('assistant', `⚠️ ${error.message}`);
+      } finally {
+        sendButton.disabled = false;
+      }
+    }
+
+    chatForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const text = userInput.value.trim();
+      if (!text) {
+        return;
+      }
+
+      try {
+        await ensureFilesUploaded();
+        await sendMessage(text);
+        userInput.value = '';
+      } catch (error) {
+        console.error(error);
+      }
+    });
+  </script>
+</body>
+</html>
